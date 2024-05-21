@@ -33,18 +33,9 @@ class GridFieldNestedFormItemRequest extends GridFieldDetailForm_ItemRequest
     {
         return Controller::join_links($this->component->Link($this->record->ID), $action);
     }
-    
+
     public function ItemEditForm()
     {
-        $config = new GridFieldConfig_RecordEditor();
-        /** @var GridFieldDetailForm */
-        $detailForm = $config->getComponentByType(GridFieldDetailForm::class);
-        $detailForm->setItemEditFormCallback(function (Form $form, $itemRequest) {
-            $breadcrumbs = $itemRequest->Breadcrumbs(false);
-            if ($breadcrumbs && $breadcrumbs->exists()) {
-                $form->Backlink = $breadcrumbs->first()->Link;
-            }
-        });
         $relationName = $this->component->getRelationName();
         $list = $this->record->$relationName();
         if ($relationName == 'Children' && $this->record->hasExtension(Hierarchy::class)) {
@@ -55,10 +46,14 @@ class GridFieldNestedFormItemRequest extends GridFieldDetailForm_ItemRequest
                         ->forForeignID($this->record->ID);
         }
         $relationClass = $list->dataClass();
+        $singleton = singleton($relationClass);
 
-        if ($this->record->hasMethod('getNestedConfig')) {
-            $config = $this->record->getNestedConfig();
-        } else {
+        $config = null;
+        if ($singleton->hasMethod('getNestedConfig')) {
+            $config = $singleton->getNestedConfig(get_class($this->record), $relationName);
+        }
+        if (!$config) {
+            $config = new GridFieldConfig_RecordEditor();
             $canEdit = $this->record->canEdit();
             if (!$canEdit) {
                 $config->removeComponentsByType(GridFieldAddNewButton::class);
@@ -97,11 +92,19 @@ class GridFieldNestedFormItemRequest extends GridFieldDetailForm_ItemRequest
                 }
             }
         }
+        /** @var GridFieldDetailForm */
+        $detailForm = $config->getComponentByType(GridFieldDetailForm::class);
+        $detailForm->setItemEditFormCallback(function (Form $form, $itemRequest) {
+            $breadcrumbs = $itemRequest->Breadcrumbs(false);
+            if ($breadcrumbs && $breadcrumbs->exists()) {
+                $form->Backlink = $breadcrumbs->first()->Link;
+            }
+        });
 
         $this->record->invokeWithExtensions('updateNestedConfig', $config);
 
         $title = _t(get_class($this->record).'.'.strtoupper($relationName), ' ');
-        
+
         $fields = new FieldList(
             $gridField = new GridField(
                 sprintf(
@@ -133,13 +136,13 @@ class GridFieldNestedFormItemRequest extends GridFieldDetailForm_ItemRequest
         $this->record->extend('updateNestedForm', $form);
         return $form;
     }
-    
+
     public function Breadcrumbs($unlinked = false)
     {
         if (!$this->popupController->hasMethod('Breadcrumbs')) {
             return null;
         }
-        
+
         /** @var ArrayList $items */
         $items = $this->popupController->Breadcrumbs($unlinked);
 
