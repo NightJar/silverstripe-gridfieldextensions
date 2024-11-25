@@ -64,7 +64,7 @@ class GridFieldEditableColumns extends GridFieldDataColumns implements
     /**
      * @return bool|array
      */
-    public function getSkipWriteComponents()
+    public function getComponentWriteConfig()
     {
         return $this->skipWriteComponents;
     }
@@ -73,7 +73,7 @@ class GridFieldEditableColumns extends GridFieldDataColumns implements
      * @param bool|array $skipConfig
      * @return $this
      */
-    public function setSkipWriteComponents($skipConfig)
+    public function setComponentWriteConfig($skipConfig)
     {
         $this->skipWriteComponents = $skipConfig;
         return $this;
@@ -196,7 +196,7 @@ class GridFieldEditableColumns extends GridFieldDataColumns implements
                 $extra = array_intersect_key($form->getData() ?? [], (array) $list->getExtraFields());
             }
 
-            $item->write(false, false, false, $this->getSkipWriteComponents());
+            $item->write(false, false, false, $this->getComponentWriteConfig());
             $list->add($item, $extra);
         }
     }
