@@ -6,8 +6,9 @@ use ReflectionMethod;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldConfig_RelationEditor;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\ORM\DataList;
 use Symbiote\GridFieldExtensions\GridFieldOrderableRows;
-use Symbiote\GridFieldExtensions\Tests\Stub\PolymorphM2MChild;
 use Symbiote\GridFieldExtensions\Tests\Stub\PolymorphM2MMapper;
 use Symbiote\GridFieldExtensions\Tests\Stub\PolymorphM2MParent;
 use Symbiote\GridFieldExtensions\Tests\Stub\StubOrderableChild;
@@ -17,9 +18,16 @@ use Symbiote\GridFieldExtensions\Tests\Stub\StubParent;
 use Symbiote\GridFieldExtensions\Tests\Stub\StubSubclass;
 use Symbiote\GridFieldExtensions\Tests\Stub\StubSubclassOrderedVersioned;
 use Symbiote\GridFieldExtensions\Tests\Stub\StubUnorderable;
-use Symbiote\GridFieldExtensions\Tests\Stub\ThroughDefiner;
-use Symbiote\GridFieldExtensions\Tests\Stub\ThroughIntermediary;
 use Symbiote\GridFieldExtensions\Tests\Stub\ThroughBelongs;
+use Symbiote\GridFieldExtensions\Tests\Stub\ThroughBelongsVersioned;
+use Symbiote\GridFieldExtensions\Tests\Stub\ThroughDefiner;
+use Symbiote\GridFieldExtensions\Tests\Stub\ThroughDefinerVersioned;
+use Symbiote\GridFieldExtensions\Tests\Stub\ThroughIntermediary;
+use Symbiote\GridFieldExtensions\Tests\Stub\TitleObject;
+use Symbiote\GridFieldExtensions\Tests\Stub\TitleSortedObject;
+use Symbiote\GridFieldExtensions\Tests\Stub\TitleArraySortedObject;
+use Symbiote\GridFieldExtensions\Tests\Stub\ThroughIntermediaryVersioned;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Tests for the {@link GridFieldOrderableRows} component.
@@ -46,20 +54,29 @@ class GridFieldOrderableRowsTest extends SapphireTest
         ThroughDefiner::class,
         ThroughIntermediary::class,
         ThroughBelongs::class,
+        TitleObject::class,
+        TitleSortedObject::class,
+        TitleArraySortedObject::class,
+        ThroughDefinerVersioned::class,
+        ThroughIntermediaryVersioned::class,
+        ThroughBelongsVersioned::class,
     ];
 
-    public function reorderItemsProvider()
+    public static function reorderItemsProvider()
     {
         return [
+            [StubParent::class . '.parent', 'MyHasMany', 'Sort'],
+            [StubParent::class . '.parent', 'MyHasManySubclass', 'Sort'],
+            [StubParent::class . '.parent-subclass-ordered-versioned', 'MyHasManySubclassOrderedVersioned', 'Sort'],
             [StubParent::class . '.parent', 'MyManyMany', 'ManyManySort'],
+            [StubParent::class . '.parent', 'MyManyManyVersioned', 'ManyManySort'],
             [ThroughDefiner::class . '.DefinerOne', 'Belongings', 'Sort'],
+            [ThroughDefinerVersioned::class . '.DefinerOne', 'Belongings', 'Sort'],
             // [PolymorphM2MParent::class . '.ParentOne', 'Children', 'Sort']
         ];
     }
 
-    /**
-     * @dataProvider reorderItemsProvider
-     */
+    #[DataProvider('reorderItemsProvider')]
     public function testReorderItems($fixtureID, $relationName, $sortName)
     {
         $orderable = new GridFieldOrderableRows($sortName);
@@ -69,7 +86,7 @@ class GridFieldOrderableRowsTest extends SapphireTest
         $config = new GridFieldConfig_RelationEditor();
         $config->addComponent($orderable);
 
-        list($parentClass, $parentInstanceID) = explode('.', $fixtureID);
+        list($parentClass, $parentInstanceID) = explode('.', $fixtureID ?? '');
         $parent = $this->objFromFixture($parentClass, $parentInstanceID);
 
         $grid = new GridField(
@@ -83,7 +100,7 @@ class GridFieldOrderableRowsTest extends SapphireTest
         $desiredOrder = [];
 
         // Make order non-contiguous, and 1-based
-        foreach (array_reverse($originalOrder) as $index => $id) {
+        foreach (array_reverse($originalOrder ?? []) as $index => $id) {
             $desiredOrder[$index * 2 + 1] = $id;
         }
 
@@ -118,12 +135,12 @@ class GridFieldOrderableRowsTest extends SapphireTest
 
         $result = $orderable->getColumnContent($grid, $record, 'irrelevant');
 
-        $this->assertContains(
+        $this->assertStringContainsString(
             'Belongings[GridFieldEditableColumns][' . $record->ID . '][Sort]',
             $result,
             'The field name is indexed under the record\'s ID'
         );
-        $this->assertContains(
+        $this->assertStringContainsString(
             'value="' . $intermediary->Sort . '"',
             $result,
             'The value comes from the MMTL intermediary Sort value'
@@ -152,12 +169,12 @@ class GridFieldOrderableRowsTest extends SapphireTest
 
         $result = $orderable->getColumnContent($grid, $record, 'irrelevant');
 
-        $this->assertContains(
+        $this->assertStringContainsString(
             'Children[GridFieldEditableColumns][' . $record->ID . '][Sort]',
             $result,
             'The field name is indexed under the record\'s ID'
         );
-        $this->assertContains(
+        $this->assertStringContainsString(
             'value="' . $intermediary->Sort . '"',
             $result,
             'The value comes from the MMTL intermediary Sort value'
@@ -183,7 +200,7 @@ class GridFieldOrderableRowsTest extends SapphireTest
         );
 
         $originalOrder = $parent->Children()->column('ID');
-        $desiredOrder = array_reverse($originalOrder);
+        $desiredOrder = array_reverse($originalOrder ?? []);
 
         $this->assertNotEquals($originalOrder, $desiredOrder);
 
@@ -194,9 +211,6 @@ class GridFieldOrderableRowsTest extends SapphireTest
         $this->assertEquals($desiredOrder, $newOrder);
     }
 
-    /**
-     * @covers \Symbiote\GridFieldExtensions\GridFieldOrderableRows::getSortTable
-     */
     public function testGetSortTable()
     {
         $orderable = new GridFieldOrderableRows();
@@ -270,7 +284,7 @@ class GridFieldOrderableRowsTest extends SapphireTest
         $desiredOrder = [];
 
         // Make order non-contiguous, and 1-based
-        foreach (array_reverse($originalOrder) as $index => $id) {
+        foreach (array_reverse($originalOrder ?? []) as $index => $id) {
             $desiredOrder[$index * 2 + 1] = $id;
         }
 
@@ -295,5 +309,90 @@ class GridFieldOrderableRowsTest extends SapphireTest
         }
 
         $this->assertTrue($differenceFound);
+    }
+
+    #[DataProvider('provideGetManipulatedData')]
+    public function testGetManipulatedData(string $dataClass, string $listClass, array $data, array $expected)
+    {
+        $list = $listClass == DataList::class ? new DataList($dataClass) : new ArrayList();
+        foreach ($data as $values) {
+            $item = new $dataClass();
+            $item->update($values);
+            $item->write();
+            $list->add($item);
+        }
+        $orderable = new GridFieldOrderableRows('Title');
+        $config = new GridFieldConfig_RelationEditor();
+        $config->addComponent($orderable);
+        $grid = new GridField('MyName', 'MyTitle', $list, $config);
+        $sortedList = $orderable->getManipulatedData($grid, $list);
+        $col = $dataClass === TitleObject::class ? 'Title' : 'Iden';
+        $this->assertSame($expected, $sortedList->column($col));
+    }
+
+    public static function provideGetManipulatedData(): array
+    {
+        return [
+            [
+                TitleObject::class,
+                ArrayList::class,
+                [
+                    ['Title' => 'C'],
+                    ['Title' => 'A'],
+                    ['Title' => 'B']
+                ],
+                ['A', 'B', 'C']
+            ],
+            [
+                TitleObject::class,
+                DataList::class,
+                [
+                    ['Title' => 'C'],
+                    ['Title' => 'A'],
+                    ['Title' => 'B'],
+                ],
+                ['A', 'B', 'C']
+            ],
+            [
+                TitleSortedObject::class,
+                ArrayList::class,
+                [
+                    ['Title' => '1', 'Iden' => 'C'],
+                    ['Title' => '2', 'Iden' => 'A'],
+                    ['Title' => '3', 'Iden' => 'B'],
+                ],
+                ['C', 'A', 'B']
+            ],
+            [
+                TitleSortedObject::class,
+                DataList::class,
+                [
+                    ['Title' => '1', 'Iden' => 'C'],
+                    ['Title' => '2', 'Iden' => 'A'],
+                    ['Title' => '3', 'Iden' => 'B'],
+                ],
+                ['C', 'A', 'B']
+            ],
+            [
+                TitleSortedObject::class,
+                DataList::class,
+                [
+                    ['Title' => 'Z', 'Iden' => 'C', 'DefaultSort' => 3],
+                    ['Title' => 'Z', 'Iden' => 'A', 'DefaultSort' => 2],
+                    ['Title' => 'Z', 'Iden' => 'B', 'DefaultSort' => 1],
+                ],
+                ['B', 'A', 'C']
+            ],
+            [
+                TitleArraySortedObject::class,
+                DataList::class,
+                [
+                    ['Title' => 'X', 'Iden' => 'C', 'OtherSort' => 3],
+                    ['Title' => 'Z', 'Iden' => 'A', 'OtherSort' => 2],
+                    ['Title' => 'Z', 'Iden' => 'B', 'OtherSort' => 1],
+                ],
+                ['C', 'B', 'A']
+            ],
+        ];
     }
 }

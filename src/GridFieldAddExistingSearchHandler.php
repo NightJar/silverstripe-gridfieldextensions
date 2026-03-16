@@ -9,7 +9,7 @@ use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\ORM\DataList;
-use SilverStripe\ORM\PaginatedList;
+use SilverStripe\Model\List\PaginatedList;
 use SilverStripe\ORM\Search\SearchContext;
 
 /**
@@ -94,9 +94,9 @@ class GridFieldAddExistingSearchHandler extends RequestHandler
 
     public function doSearch($data, $form)
     {
-        $list = $this->context->getQuery($data, false, false, $this->getSearchList());
+        $list = $this->context->getQuery($data, false, null, $this->getSearchList());
         $list = $list->subtract($this->grid->getList());
-        $list = new PaginatedList($list, $this->request);
+        $list = PaginatedList::create($list, $this->request);
 
         $data = $this->customise(array(
             'SearchForm' => $form,
@@ -109,7 +109,7 @@ class GridFieldAddExistingSearchHandler extends RequestHandler
     {
         $list = $this->getSearchList();
         $list = $list->subtract($this->grid->getList());
-        $list = new PaginatedList($list, $this->request);
+        $list = PaginatedList::create($list, $this->request);
 
         return $list;
     }

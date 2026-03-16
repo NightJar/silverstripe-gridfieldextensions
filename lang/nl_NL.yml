@@ -1,9 +1,19 @@
 nl_NL:
   GridFieldAddExistingSearchHandler.ss:
     NOITEMS: 'Geen resultaten gevonden.'
-    RESULTS: 'Resultaten'
+    RESULTS: Resultaten
   GridFieldExtensions:
-    ADD: 'Toevoegen'
+    ADD: Toevoegen
     ADDEXISTING: 'Bestaande toevoegen'
-    SEARCH: 'Zoeken'
+    BACK: Terug
+    CURRENT: (huidige)
+    NOITEMS: 'Er zijn geen items.'
+    Next: Volgende
+    PREVIOUS: Vorige
+    RESULTS: Resultaten
+    SEARCH: Zoeken
     SELECTTYPETOCREATE: '(Selecteer type om te creeën)'
+  Symbiote\GridFieldExtensions\Extensions\GridFieldDetailFormItemRequestExtension:
+    NEW: 'Nieuw item maken'
+  Symbiote\GridFieldExtensions\GridFieldConfigurablePaginator:
+    SHOW: Toon

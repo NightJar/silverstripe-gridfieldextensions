@@ -30,13 +30,13 @@ class OrderableRowsThroughVersionedTest extends SapphireTest
 
     protected $originalReadingMode;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
-        $this->orignalReadingMode = Versioned::get_reading_mode();
+        $this->originalReadingMode = Versioned::get_reading_mode();
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         Versioned::set_reading_mode($this->originalReadingMode);
         unset($this->originalReadingMode);
@@ -80,11 +80,11 @@ class OrderableRowsThroughVersionedTest extends SapphireTest
         $originalOrder = $parent->$relationName()->sort($sortName)->column('ID');
         // Ring (un)shift by one, e.g. 3,2,1 becomes 1,3,2.
         // then string key our new order starting at 1
-        $desiredOrder = array_values($originalOrder);
+        $desiredOrder = array_values($originalOrder ?? []);
         array_unshift($desiredOrder, array_pop($desiredOrder));
         $desiredOrder = array_combine(
-            range('1', count($desiredOrder)),
-            $desiredOrder
+            range('1', count($desiredOrder ?? [])),
+            $desiredOrder ?? []
         );
         $this->assertNotEquals($originalOrder, $desiredOrder);
 

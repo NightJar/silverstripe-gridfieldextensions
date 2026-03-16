@@ -3,7 +3,7 @@
 namespace Symbiote\GridFieldExtensions;
 
 use SilverStripe\Forms\GridField\GridFieldDataColumns;
-use SilverStripe\View\ArrayData;
+use SilverStripe\Model\ArrayData;
 
 /**
  * Displays a link to an external source referenced 'external link'
@@ -19,7 +19,7 @@ class GridFieldExternalLink extends GridFieldDataColumns
      */
     public function augmentColumns($gridField, &$columns)
     {
-        if (!in_array('Actions', $columns)) {
+        if (!in_array('Actions', $columns ?? [])) {
             $columns[] = 'Actions';
         }
     }
@@ -72,7 +72,7 @@ class GridFieldExternalLink extends GridFieldDataColumns
      */
     public function getColumnContent($gridField, $record, $columnName)
     {
-        $data = new ArrayData(array(
+        $data = ArrayData::create(array(
             'Link' => $record->hasMethod('getExternalLink') ? $record->getExternalLink() : $record->ExternalLink,
             'Text' => $record->hasMethod('getExternalLinkText') ? $record->getExternalLinkText() : 'External Link'
         ));

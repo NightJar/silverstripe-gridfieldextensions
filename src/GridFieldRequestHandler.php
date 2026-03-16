@@ -2,7 +2,7 @@
 
 namespace Symbiote\GridFieldExtensions;
 
-use SilverStripe\Admin\LeftAndMain;
+use SilverStripe\Admin\AdminController;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\RequestHandler;
 use SilverStripe\Forms\FieldList;
@@ -12,7 +12,7 @@ use SilverStripe\Forms\GridField\GridFieldComponent;
 use SilverStripe\Forms\GridField\GridFieldDetailForm_ItemRequest;
 use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\TabSet;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
 
 /**
  * A base utility class for request handlers which present a grid field detail
@@ -83,14 +83,14 @@ abstract class GridFieldRequestHandler extends RequestHandler
      */
     public function Form()
     {
-        $form = new Form(
+        $form = Form::create(
             $this,
             'SilverStripe\\Forms\\Form',
-            new FieldList($root = new TabSet('Root', new Tab('Main'))),
-            new FieldList()
+            FieldList::create($root = TabSet::create('Root', Tab::create('Main'))),
+            FieldList::create()
         );
 
-        if ($this->getTopLevelController() instanceof LeftAndMain) {
+        if ($this->getTopLevelController() instanceof AdminController) {
             $form->setTemplate('LeftAndMain_EditForm');
             $form->addExtraClass('cms-content cms-edit-form cms-tabset center');
             $form->setAttribute('data-pjax-fragment', 'CurrentForm Content');
@@ -136,7 +136,7 @@ abstract class GridFieldRequestHandler extends RequestHandler
         if ($controller->hasMethod('Breadcrumbs')) {
             return $controller->Breadcrumbs();
         } else {
-            return new ArrayList();
+            return ArrayList::create();
         }
     }
 

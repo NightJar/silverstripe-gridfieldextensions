@@ -6,8 +6,15 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridField_FormAction;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Forms\GridField\GridFieldFilterHeader;
+use SilverStripe\Forms\GridField\GridFieldPaginator;
+use SilverStripe\ORM\Search\BasicSearchContext;
+use SilverStripe\Model\ArrayData;
 use Symbiote\GridFieldExtensions\GridFieldConfigurablePaginator;
+use SilverStripe\Forms\Form;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\TextField;
 
 class GridFieldConfigurablePaginatorTest extends SapphireTest
 {
@@ -16,7 +23,7 @@ class GridFieldConfigurablePaginatorTest extends SapphireTest
      */
     protected $gridField;
 
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -26,15 +33,33 @@ class GridFieldConfigurablePaginatorTest extends SapphireTest
             $data->push(array('ID' => $i));
         }
 
+        $form = new Form();
+        $fieldList = new FieldList([new TextField('ID')]);
+        $form->setFields($fieldList);
         $this->gridField = GridField::create('Mock', null, $data);
+        $this->gridField->setForm($form);
+        $this->gridField->getConfig()->removeComponentsByType(GridFieldPaginator::class);
     }
 
-    public function testGetTotalRecords()
+    public function testGetTotalItems()
     {
         $paginator = new GridFieldConfigurablePaginator;
         $paginator->setGridField($this->gridField);
 
-        $this->assertSame(130, $paginator->getTotalRecords());
+        $this->assertSame(130, $paginator->getTotalItems());
+    }
+
+    public function testGetTotalItemsDuringFilter(): void
+    {
+        $fieldList = $this->gridField->getForm()->Fields();
+        $paginator = new GridFieldConfigurablePaginator;
+        $this->gridField->getConfig()->addComponent($paginator);
+        $this->gridField->getConfig()->getComponentByType(GridFieldFilterHeader::class)
+            ->setSearchContext(new BasicSearchContext(ArrayData::class, $fieldList));
+        $this->gridField->State->GridFieldFilterHeader->Columns = ['ID' => '2'];
+        $this->gridField->getManipulatedList();
+
+        $this->assertSame(31, $paginator->getTotalItems());
     }
 
     public function testGetFirstShown()
@@ -172,12 +197,10 @@ class GridFieldConfigurablePaginatorTest extends SapphireTest
         ), $paginator->getPageSizesAsList());
     }
 
-    /**
-     * @expectedException Exception
-     * @expectedExceptionMessage No GridField available yet for this request!
-     */
     public function testGetGridFieldThrowsExceptionWhenNotSet()
     {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('No GridField available yet for this request!');
         $paginator = new GridFieldConfigurablePaginator;
         $paginator->getGridField();
     }
@@ -205,9 +228,9 @@ class GridFieldConfigurablePaginatorTest extends SapphireTest
             )
         );
 
-        $gridField = $this->getMockBuilder(GridField::class)->disableOriginalConstructor()->getMock();
         $paginator = new GridFieldConfigurablePaginator;
-        $result = $paginator->getPagerActions($controls, $gridField);
+        $paginator->setGridField($this->gridField);
+        $result = $paginator->getPagerActions($controls, $this->gridField);
 
         $this->assertCount(2, $result);
         $this->assertArrayHasKey('next', $result);

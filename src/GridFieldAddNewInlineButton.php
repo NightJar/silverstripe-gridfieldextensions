@@ -5,27 +5,27 @@ namespace Symbiote\GridFieldExtensions;
 use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\Form;
+use SilverStripe\Forms\GridField\AbstractGridFieldComponent;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridField_HTMLProvider;
 use SilverStripe\Forms\GridField\GridField_SaveHandler;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectInterface;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\ManyManyList;
 use SilverStripe\ORM\ManyManyThroughList;
-use SilverStripe\View\ArrayData;
+use SilverStripe\Model\ArrayData;
 use SilverStripe\View\Requirements;
 use Exception;
 
 /**
  * Builds on the {@link GridFieldEditableColumns} component to allow creating new records.
  */
-class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_SaveHandler
+class GridFieldAddNewInlineButton extends AbstractGridFieldComponent implements
+    GridField_HTMLProvider,
+    GridField_SaveHandler
 {
-    /**
-     * @skipUpgrade
-     */
     const POST_KEY = 'GridFieldAddNewInlineButton';
 
     private $fragment;
@@ -102,7 +102,7 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
         Requirements::javascript('symbiote/silverstripe-gridfieldextensions:javascript/tmpl.js');
         GridFieldExtensions::include_requirements();
 
-        $data = new ArrayData(array(
+        $data = ArrayData::create(array(
             'Title'  => $this->getTitle(),
         ));
 
@@ -114,8 +114,8 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
 
     private function getRowTemplate(GridField $grid, GridFieldEditableColumns $editable)
     {
-        $columns = new ArrayList();
-        $handled = array_keys($editable->getDisplayFields($grid));
+        $columns = ArrayList::create();
+        $handled = array_keys($editable->getDisplayFields($grid) ?? []);
 
         if ($grid->getList()) {
             $record = Injector::inst()->create($grid->getModelClass());
@@ -126,15 +126,18 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
         $fields = $editable->getFields($grid, $record);
 
         foreach ($grid->getColumns() as $column) {
-            if (in_array($column, $handled)) {
+            if (in_array($column, $handled ?? [])) {
                 $field = $fields->dataFieldByName($column);
                 $field->setName(sprintf(
                     '%s[%s][{%%=o.num%%}][%s]',
                     $grid->getName(),
-                    self::POST_KEY,
+                    GridFieldAddNewInlineButton::POST_KEY,
                     $field->getName()
                 ));
 
+                if ($record && $record->hasField($column)) {
+                    $field->setValue($record->getField($column));
+                }
                 $content = $field->Field();
             } else {
                 $content = $grid->getColumnContent($record, $column);
@@ -142,8 +145,8 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
                 // Convert GridFieldEditableColumns to the template format
                 $content = str_replace(
                     sprintf('[%s][0]', GridFieldEditableColumns::POST_KEY),
-                    sprintf('[%s][{%%=o.num%%}]', self::POST_KEY),
-                    $content
+                    sprintf('[%s][{%%=o.num%%}]', GridFieldAddNewInlineButton::POST_KEY),
+                    $content ?? ''
                 );
             }
 
@@ -158,7 +161,7 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
                 $attrs .= sprintf(' %s="%s"', $attr, Convert::raw2att($val));
             }
 
-            $columns->push(new ArrayData(array(
+            $columns->push(ArrayData::create(array(
                 'Content'    => $content,
                 'Attributes' => DBField::create_field('HTMLFragment', $attrs),
                 'IsActions'  => $column == 'Actions'
@@ -171,9 +174,11 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
     public function handleSave(GridField $grid, DataObjectInterface $record)
     {
         $list  = $grid->getList();
-        $value = $grid->Value();
+        $value = $grid->getValue();
 
-        if (!isset($value[self::POST_KEY]) || !is_array($value[self::POST_KEY])) {
+        if (!isset($value[GridFieldAddNewInlineButton::POST_KEY])
+            || !is_array($value[GridFieldAddNewInlineButton::POST_KEY])
+        ) {
             return;
         }
 
@@ -187,7 +192,7 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
             return;
         }
 
-        foreach ($value[self::POST_KEY] as $fields) {
+        foreach ($value[GridFieldAddNewInlineButton::POST_KEY] as $fields) {
             /** @var DataObject $item */
             $item  = $class::create();
 
@@ -209,7 +214,7 @@ class GridFieldAddNewInlineButton implements GridField_HTMLProvider, GridField_S
             }
 
             if ($list instanceof ManyManyList) {
-                $extra = array_intersect_key($form->getData(), (array) $list->getExtraFields());
+                $extra = array_intersect_key($form->getData() ?? [], (array) $list->getExtraFields());
             }
 
             $item->write(false, false, false, true);

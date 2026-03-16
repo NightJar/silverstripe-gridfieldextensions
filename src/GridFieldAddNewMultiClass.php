@@ -9,11 +9,12 @@ use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\DropdownField;
+use SilverStripe\Forms\GridField\AbstractGridFieldComponent;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridField_HTMLProvider;
 use SilverStripe\Forms\GridField\GridField_URLHandler;
 use SilverStripe\Forms\GridField\GridFieldDetailForm;
-use SilverStripe\View\ArrayData;
+use SilverStripe\Model\ArrayData;
 use ReflectionClass;
 use Exception;
 
@@ -23,11 +24,10 @@ use Exception;
  * By default the list of classes that are createable is the grid field's model class, and any
  * subclasses. This can be customised using {@link setClasses()}.
  */
-class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URLHandler
+class GridFieldAddNewMultiClass extends AbstractGridFieldComponent implements
+    GridField_HTMLProvider,
+    GridField_URLHandler
 {
-    /**
-     * @skipUpgrade
-     */
     const POST_KEY = 'GridFieldAddNewMultiClass';
 
     private static $allowed_actions = array(
@@ -121,7 +121,7 @@ class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URL
         $result = array();
 
         if (is_null($this->classes)) {
-            $classes = array_values(ClassInfo::subclassesFor($grid->getModelClass()));
+            $classes = array_values(ClassInfo::subclassesFor($grid->getModelClass()) ?? []);
             sort($classes);
         } else {
             $classes = $this->classes;
@@ -132,7 +132,7 @@ class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URL
             if (!is_string($class)) {
                 $class = $title;
             }
-            if (!class_exists($class)) {
+            if (!class_exists($class ?? '')) {
                 continue;
             }
             $is_abstract = (($reflection = new ReflectionClass($class)) && $reflection->isAbstract());
@@ -213,7 +213,7 @@ class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URL
             throw new Exception('The add new multi class component requires the detail form component.');
         }
 
-        if (!$class || !array_key_exists($class, $classes)) {
+        if (!$class || !array_key_exists($class, $classes ?? [])) {
             throw new HTTPResponse_Exception(400);
         }
 
@@ -238,19 +238,24 @@ class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URL
     {
         $classes = $this->getClasses($grid);
 
-        if (!count($classes)) {
+        if (!count($classes ?? [])) {
             return array();
         }
 
         GridFieldExtensions::include_requirements();
 
-        $field = new DropdownField(sprintf('%s[%s]', __CLASS__, $grid->getName()), '', $classes, $this->defaultClass);
+        $field = DropdownField::create(
+            sprintf('%s[%s]', __CLASS__, $grid->getName()),
+            '',
+            $classes,
+            $this->defaultClass
+        );
         if (Config::inst()->get(__CLASS__, 'showEmptyString')) {
             $field->setEmptyString(_t('GridFieldExtensions.SELECTTYPETOCREATE', '(Select type to create)'));
         }
         $field->addExtraClass('no-change-track');
 
-        $data = new ArrayData(array(
+        $data = ArrayData::create(array(
             'Title'      => $this->getTitle(),
             'Link'       => Controller::join_links($grid->Link(), 'add-multi-class', '{class}'),
             'ClassField' => $field
@@ -285,7 +290,7 @@ class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URL
      */
     protected function sanitiseClassName($class)
     {
-        return str_replace('\\', '-', $class);
+        return str_replace('\\', '-', $class ?? '');
     }
 
     /**
@@ -296,6 +301,6 @@ class GridFieldAddNewMultiClass implements GridField_HTMLProvider, GridField_URL
      */
     protected function unsanitiseClassName($class)
     {
-        return str_replace('-', '\\', $class);
+        return str_replace('-', '\\', $class ?? '');
     }
 }

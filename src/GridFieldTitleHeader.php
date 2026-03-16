@@ -2,24 +2,25 @@
 
 namespace Symbiote\GridFieldExtensions;
 
+use SilverStripe\Forms\GridField\AbstractGridFieldComponent;
 use SilverStripe\Forms\GridField\GridField_HTMLProvider;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\View\ArrayData;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\ArrayData;
 
 /**
  * A simple header which displays column titles.
  */
-class GridFieldTitleHeader implements GridField_HTMLProvider
+class GridFieldTitleHeader extends AbstractGridFieldComponent implements GridField_HTMLProvider
 {
 
     public function getHTMLFragments($grid)
     {
-        $cols = new ArrayList();
+        $cols = ArrayList::create();
 
         foreach ($grid->getColumns() as $name) {
             $meta = $grid->getColumnMetadata($name);
 
-            $cols->push(new ArrayData(array(
+            $cols->push(ArrayData::create(array(
                 'Name'  => $name,
                 'Title' => $meta['title']
             )));
